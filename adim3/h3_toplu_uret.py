@@ -19,6 +19,37 @@ import uuid
 COMFY = "http://127.0.0.1:8188"
 
 
+def join(parts):
+    """Parçaları cümle olarak birleştirir; noktası olmayanın sonuna nokta koyar."""
+    return " ".join(p if p.rstrip().endswith((".", '"', "!", "?", ":")) else p.rstrip() + "." for p in parts)
+
+
+def setting_text(loc):
+    """Mekan tarifi; varsa eşya yerleşimi ve ortam sesi de eklenir."""
+    text = loc["visual"]
+    if loc.get("layout"):
+        text = join([text, f'Layout: {loc["layout"]}'])
+    if loc.get("ambience"):
+        text = join([text, f'Ambient sound: {loc["ambience"]}'])
+    return text
+
+
+def speech(d, chars):
+    c = chars[d["speaker"]]
+    who = f'{c["name"]} (voice: {c["voice"]})' if c.get("voice") else c["name"]
+    return f'{who} says in Turkish: "{d["line"]}"'
+
+
+def series_sound(bible):
+    """Bütün klipler için sabit müzik ve ses tasarımı satırları."""
+    parts = []
+    if bible.get("music"):
+        parts.append(f'Music: {bible["music"]}')
+    if bible.get("sound"):
+        parts.append(f'Sound design: {bible["sound"]}')
+    return parts
+
+
 def h3_prompt(shot, bible):
     chars = {c["id"]: c for c in bible["characters"]}
     locs = {l["id"]: l for l in bible["locations"]}
@@ -29,24 +60,25 @@ def h3_prompt(shot, bible):
     ]
     for cid in shot.get("characters", []):
         parts.append(f'{chars[cid]["name"]}: {chars[cid]["visual"]}')
-    parts.append(f'Setting: {locs[shot["location"]]["visual"]}')
+    parts.append(f'Setting: {setting_text(locs[shot["location"]])}')
     if shot.get("lighting"):
         parts.append(f'Lighting: {shot["lighting"]}')
     if shot.get("dialogue") and shot["dialogue"].get("line"):
         d = shot["dialogue"]
-        parts.append(f'{chars[d["speaker"]]["name"]} says in Turkish: "{d["line"]}"')
+        parts.append(speech(d, chars))
     if shot.get("audio"):
         parts.append(f'Audio: {shot["audio"]}')
     parts.append(f'Style: {bible["style"]}. Vertical 9:16.')
+    parts += series_sound(bible)
     parts.append("No text, subtitles, logos or watermarks.")
-    return " ".join(parts)
+    return join(parts)
 
 
 def shot_line(shot, chars):
     line = f'Shot {shot["shot"]}: {shot["angle"]}, {shot["size"]}, {shot["movement"]}. {shot["action"]}'
     if shot.get("dialogue") and shot["dialogue"].get("line"):
         d = shot["dialogue"]
-        line += f' {chars[d["speaker"]]["name"]} says in Turkish: "{d["line"]}"'
+        line += " " + speech(d, chars)
     if shot.get("audio"):
         line += f' Audio: {shot["audio"]}.'
     return line
@@ -63,7 +95,8 @@ def h3_scene_prompt(group, bible):
                 cids.append(cid)
 
     parts = [f'Style: {bible["style"]}. Vertical 9:16.']
-    parts.append(f'Setting (identical in every shot, same furniture and layout): {locs[group[0]["location"]]["visual"]}')
+    parts += series_sound(bible)
+    parts.append(f'Setting (identical in every shot, same furniture and layout): {setting_text(locs[group[0]["location"]])}')
     for cid in cids:
         parts.append(f'{chars[cid]["name"]}: {chars[cid]["visual"]}')
     parts.append("Storyboard (each shot its own angle, clean hard cuts, no dissolves):")
@@ -73,7 +106,7 @@ def h3_scene_prompt(group, bible):
         parts.append(f"[{t:g}s-{t + d:g}s] " + shot_line(shot, chars))
         t += d
     parts.append("No text, subtitles, logos or watermarks.")
-    return " ".join(parts)
+    return join(parts)
 
 
 def scene_groups(shots, max_s=15):
