@@ -1,0 +1,83 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Kitaptan Reels bölümüne: proje turu",
+  "description": "Projeye yeni katılan biri için: bir kitabın nasıl JSON çekim listesine, sonra RunPod'daki H3 ile kliplere ve tek bir bölüm videosuna dönüştüğü.",
+  "steps": [
+    {
+      "file": "README.md",
+      "line": 13,
+      "title": "Büyük resim",
+      "description": "Proje üç adımlık bir boru hattı: **adim2** kitabı JSON'a çevirir, **adim1** GPU'yu hazırlar, **adim3** JSON'u videoya çevirir. Klasör numaraları kurulum sırasını, akış ise veri sırasını gösteriyor. Kafa karıştırmasın: veri akışı adim2 → adim3, adim1 sadece makine."
+    },
+    {
+      "file": "adim2/senaryo-sablonlari.md",
+      "line": 9,
+      "title": "Adım 1: Dizi kutsal kitabı",
+      "description": "LLM'e bütün kitap verilir, karşılığında `bible.json` alınır: karakter (`C1`...) ve mekan (`L1`...) kartları, tek satırlık `style` ve beat listesi.\n\nNeden önemli: H3 her çekimi bağımsız üretir, önceki klibi hatırlamaz. Karakterin yüzü ancak bu `visual` tarifi **her promptta aynen tekrar edildiği** için tutarlı kalır. Tarifler bu yüzden ölçülebilir ve İngilizce yazılıyor."
+    },
+    {
+      "file": "adim2/senaryo-sablonlari.md",
+      "line": 54,
+      "title": "Adım 2: Beat'lerden bölümlere",
+      "description": "Beat'ler 60-90 saniyelik Reels bölümlerine bölünür: ilk 3 saniyede kanca, sonda cliffhanger, bölüm başına 1-3 sahne. Burada **sahne = aynı mekan + kesintisiz zaman** tanımı yapılıyor. Bu tanım ileride `--sahne` modunda klipleri birleştirmenin temeli olacak."
+    },
+    {
+      "file": "adim2/senaryo-sablonlari.md",
+      "line": 89,
+      "title": "Adım 3: Çekim listesi",
+      "description": "Her bölüm `bolum1.json` gibi bir dosyaya dönüşür: `shots` dizisinde açı, çekim boyu, kamera hareketi, aksiyon, diyalog, ses ve `duration_s`. Betiğin okuduğu alanların hepsi buradan geliyor. Bir alanın adı değişirse `h3_toplu_uret.py` bozulur."
+    },
+    {
+      "file": "adim2/senaryo-sablonlari.md",
+      "line": 146,
+      "title": "Adım 4: Prompt fonksiyonunun ilk hali",
+      "description": "Çekim + bible'ı tek bir H3 promptuna çeviren fonksiyon burada belge olarak duruyor.\n\n**Dikkat:** Aynı fonksiyonun çalışan kopyası `adim3/h3_toplu_uret.py` içinde. İkisi elle senkron tutuluyor, değişiklik yaparsan betikteki asıl kaynak."
+    },
+    {
+      "file": "adim1/runpod-h3-kurulum.md",
+      "line": 19,
+      "title": "Makine: RunPod ve lisans",
+      "description": "Yerel GTX 1070 yetmediği için üretim RunPod'da (48 GB'lık kart) yapılıyor. Bu bölüm en kolay atlanan ama en önemli kısım: H3 lisansı ABD/AB/İngiltere/Güney Kore için ayrı izin istiyor, pod bu bölgelerin dışında (ör. Kanada) açılmalı."
+    },
+    {
+      "file": "adim1/runpod-h3-kurulum.md",
+      "line": 50,
+      "title": "Model dosyaları nereye gidiyor",
+      "description": "600 GB'lık repo yerine sadece şablonun kullandığı dosyalar indirilir, sonra dosya adına göre ComfyUI'ın `text_encoders`, `vae`, `loras` ve `diffusion_models` klasörlerine sembolik link verilir. Dosyalar network volume'da durduğu için pod kapanınca kaybolmaz."
+    },
+    {
+      "file": "adim3/h3_toplu_uret.py",
+      "line": 22,
+      "title": "Bir çekim = bir prompt",
+      "description": "`h3_prompt` bir çekimi tek paragrafa çevirir: açı/boy/hareket, aksiyon, karakterlerin bible'daki görsel tarifi, mekan, ışık, Türkçe diyalog, ses ve stil. Son satır her zaman \"no text, subtitles...\" ekler, çünkü H3 kendiliğinden yazı basmaya meyilli."
+    },
+    {
+      "file": "adim3/h3_toplu_uret.py",
+      "line": 79,
+      "title": "--sahne modu: mekan tutarlılığı",
+      "description": "Art arda gelen, sahnesi ve mekanı aynı çekimler toplam 15 saniyeyi geçmeyecek şekilde gruplanır. `h3_scene_prompt` (55. satır) bunları `[0s-5s] Shot 1 ... [5s-11s] Shot 2` storyboard formatında **tek bir H3 üretimine** koyar. Böylece model aynı odayı tek klip içinde korur.\n\nGotcha: grup dosyası ilk çekimin numarasıyla kaydedilir (`shot_03` hem 3'ü hem 4'ü içerebilir)."
+    },
+    {
+      "file": "adim3/h3_toplu_uret.py",
+      "line": 103,
+      "title": "Şablonu otomatik okuma",
+      "description": "Betik ComfyUI'dan \"Export (API)\" ile alınan JSON'da hangi node'a ne yazacağını kendisi bulur: süre `round(a * 24)` ifadeli `ComfyMathExpression`'a bağlı `PrimitiveFloat`, prompt en uzun metin girişi (118. satır), seed ve dosya öneki ada göre.\n\nBu sezgisel bir tahmin. Şablon değişirse ilk iş çıktıdaki `BULUNAMADI` satırlarına bakmak; gerekirse `--prompt-node` ile elle verilir."
+    },
+    {
+      "file": "adim3/h3_toplu_uret.py",
+      "line": 195,
+      "title": "Ana döngü: doldur, gönder, bekle",
+      "description": "Her iş için şablon kopyalanır; prompt, süre (4-15 sn arasına sıkıştırılmış), seed (`--seed + çekim no`) ve `bolum1/shot_NN` öneki yazılır. Sonra ComfyUI'ın `/prompt` ucuna gönderilip `/history` 5 saniyede bir yoklanır.\n\nÇekimler sırayla gider, hata bir çekimi durdurur ama döngüyü durdurmaz. Kötü çekimi `--only 3 9 --seed 1000` ile yeniden üretmek bu yüzden ucuz."
+    },
+    {
+      "file": "adim3/birlestir.sh",
+      "line": 11,
+      "title": "Son adım: tek bölüm videosu",
+      "description": "`shot_*.mp4` dosyaları ada göre sıralanıp ffmpeg concat ile birleştirilir ve uygulamaya yüklenecek `bolum1.mp4` çıkar. Sıra dosya adından geldiği için iki basamaklı `shot_01` biçimi önemli. Bir çekimi yeniden ürettiysen eski dosyayı silmeyi unutma, yoksa ikisi de videoya girer."
+    },
+    {
+      "title": "Buradan sonra",
+      "description": "Artık bir kitabın `bible.json` → `bolumN.json` → klipler → `bolumN.mp4` yolunu baştan sona takip edebilirsin. Sıradaki büyük parça, bu bölümlerin paylaşılacağı mobil uygulama. Pratik ayrıntılar için `adim3/h3-uretim-rehberi.md`'deki \"Bilmen gerekenler\" bölümüne bak."
+    }
+  ]
+}
