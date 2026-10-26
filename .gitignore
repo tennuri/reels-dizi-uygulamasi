@@ -1,0 +1,4 @@
+*.mp4
+*_promptlar.txt
+*_log.txt
+__pycache__/
