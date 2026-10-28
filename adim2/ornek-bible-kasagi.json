@@ -1,0 +1,71 @@
+{
+  "title": "Kaşağı",
+  "style": "Live-action period drama, Ottoman provincial town around 1890, shot on 35mm film, warm late-afternoon natural light, muted earth palette of ochre, walnut brown, faded red and olive green, soft film grain, shallow depth of field, restrained realistic grading, no modern objects",
+  "music": "Sparse melancholic score: a solo oud playing a slow, simple four-note motif in a minor makam, with a soft low ney drone underneath; no percussion, no vocals, never loud; the same motif and instruments in every clip",
+  "sound": "Natural, close-miked period sound: wooden floorboards creaking, straw rustling, horse breathing, distant birds; no modern sounds, no reverb-heavy effects; dialogue clear and slightly intimate",
+  "characters": [
+    {
+      "id": "C1",
+      "name": "Young narrator",
+      "role": "anlatıcı, ağabey",
+      "visual": "8-year-old Turkish boy, slim build, about 125 cm tall, light olive skin, narrow oval face, slightly pointed chin, large almond-shaped dark brown eyes, thick straight dark eyebrows, short straight dark brown hair cut evenly above the ears with a side part on the left, small mole under the right eye; wears a faded maroon wool vest with three brass buttons over a long-sleeved cream linen collarless shirt, grey wool knee-length trousers, dark grey knee socks and worn brown leather shoes",
+      "voice": "high, clear boy's voice, speaks quickly and nervously, slight İstanbul accent",
+      "invented": true
+    },
+    {
+      "id": "C2",
+      "name": "Hasan",
+      "role": "küçük kardeş",
+      "visual": "6-year-old Turkish boy, small and chubby, about 110 cm tall, fair skin with rosy cheeks, round face, small upturned nose, light brown eyes, light brown curly hair slightly long over the forehead; wears an oversized pale blue cotton shirt with rolled-up sleeves, loose brown linen trousers held by a dark red cloth sash, barefoot",
+      "voice": "soft, slightly lisping little boy's voice, speaks slowly and sincerely",
+      "invented": true
+    },
+    {
+      "id": "C3",
+      "name": "Dadaruh",
+      "role": "yaşlı seyis",
+      "visual": "70-year-old man, lean and slightly stooped, deeply wrinkled sun-tanned face, hollow cheeks, short neatly trimmed white beard and white moustache, pale grey eyes, bushy white eyebrows, black felt skullcap; wears a worn dark green wool jacket with patched elbows over a collarless off-white shirt, a stained brown leather apron, baggy black şalvar trousers and black leather boots",
+      "voice": "low, rough, slow voice of an old man, warm but stern, rural Anatolian accent",
+      "invented": true
+    },
+    {
+      "id": "C4",
+      "name": "Father",
+      "role": "baba",
+      "visual": "45-year-old Ottoman gentleman, tall and broad-shouldered, fair skin, rectangular face, neatly trimmed black beard with grey streaks at the chin, dark brown eyes, red felt fez with a black tassel; wears a dark navy wool frock coat (stambouline) buttoned to the neck, white shirt collar visible, dark trousers and polished black shoes, a gold watch chain across the chest",
+      "voice": "deep, calm, authoritative baritone; becomes cold and sharp when angry",
+      "invented": true
+    },
+    {
+      "id": "C5",
+      "name": "Mother",
+      "role": "anne",
+      "visual": "38-year-old Turkish woman, medium height, fair skin, soft oval face, kind dark brown eyes, dark hair fully covered by a cream silk headscarf tied under the chin; wears a long dark plum-colored dress with long sleeves and a thin white lace collar",
+      "voice": "gentle, warm alto voice, speaks softly",
+      "invented": true
+    }
+  ],
+  "locations": [
+    {
+      "id": "L1",
+      "name": "Ahır",
+      "visual": "Old wooden stable of a mansion, dark weathered pine planks, packed earth floor covered with golden straw, dust floating in slanted sunbeams from a single high window",
+      "layout": "Entrance door at the front left; one chestnut horse with a white blaze in a wooden stall against the back wall; a long stone water trough along the right wall; a wooden shelf with brushes and a hanging rope on the left wall next to the door; the high window is in the upper right corner",
+      "ambience": "horse breathing and shifting hooves, straw rustling, flies buzzing softly, distant birds outside"
+    },
+    {
+      "id": "L2",
+      "name": "Konak bahçesi",
+      "visual": "Walled garden of a two-story wooden Ottoman mansion painted pale ochre with dark brown shutters, stone-paved path, mature fruit trees, warm afternoon light",
+      "layout": "Mansion facade with a covered wooden porch on the left; the stone path runs from the porch straight to the stable door at the back; a stone well with a wooden roof in the right corner; two apricot trees and one walnut tree between the path and the high stone wall on the right",
+      "ambience": "light wind in the leaves, sparrows, a distant rooster, the creak of the well rope"
+    },
+    {
+      "id": "L3",
+      "name": "Konak odası",
+      "visual": "Ottoman mansion room with dark wooden ceiling beams, whitewashed walls, low built-in sofa (sedir) covered with red kilim cushions, oil lamp light at night or soft window light by day",
+      "layout": "Two latticed windows on the back wall; the sedir runs along the back wall under the windows; a wooden door on the left wall; a brass brazier in the middle of the room; a small walnut chest against the right wall",
+      "ambience": "quiet room tone, wood creaking, faint crackle of the brazier, muffled voices from the courtyard"
+    }
+  ]
+}

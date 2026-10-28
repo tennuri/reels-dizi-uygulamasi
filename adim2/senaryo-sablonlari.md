@@ -49,6 +49,42 @@ KİTAP:
 {{kitap_metni}}
 ```
 
+### Adım 1b: Kutsal kitabı tutarlılık için detaylandır
+
+H3 her klipte yüzü, odayı ve müziği baştan hayal ediyor. Tarif ne kadar somut olursa klipler o kadar birbirine benzer. Adım 1'in çıktısını bu promptla zenginleştir. Tam bir örnek: [ornek-bible-kasagi.json](ornek-bible-kasagi.json).
+
+```text
+Aşağıdaki dizi kutsal kitabını (JSON), bir video modelinin her klipte AYNI
+karakteri, AYNI mekanı ve AYNI müziği üretebileceği kadar detaylandır.
+Bütün tarifler İngilizce. Mevcut id'leri ve isimleri değiştirme.
+
+Her karakter için:
+- "visual": yaş, boy (cm), yapı, ten rengi, yüz şekli, çene, burun, göz şekli
+  ve rengi, kaşlar, saç (renk, uzunluk, kesim, ayrım yönü), sakal/bıyık,
+  ayırt edici bir iz (ben, yara, gözlük vb.), kıyafetin her parçası kumaşı ve
+  rengiyle (üst, alt, ayakkabı, aksesuar). Tek paragraf, 60-90 kelime.
+- "voice": ses tonu, hızı, aksanı, karakterin konuşma tarzı (tek cümle).
+
+Her mekan için:
+- "visual": dönem, malzemeler, renkler, ışık kaynağı ve saati.
+- "layout": eşyaların yeri sol/sağ/arka/ön duvara göre ("table against the
+  left wall under the window" gibi). Kapı ve pencerelerin yeri mutlaka olsun.
+- "ambience": o mekanda sürekli duyulan ortam sesleri.
+
+Dizi geneli için:
+- "style": görüntü üslubu (film tipi, ışık, renk paleti, lens hissi).
+- "music": bütün kliplerde aynı kalacak müzik: enstrümanlar, tempo, ton,
+  tekrar eden motif, ne olmayacağı (ör. "no percussion, no vocals").
+- "sound": genel ses tasarımı kuralları.
+
+Yoruma açık kelimeler kullanma ("güzel", "sıradan"). Sadece JSON döndür.
+
+KUTSAL KİTAP:
+{{adim1_json}}
+```
+
+`h3_toplu_uret.py` bu yeni alanları (`voice`, `layout`, `ambience`, `music`, `sound`) varsa otomatik olarak her prompta ekler. Eski bible.json'lar da çalışmaya devam eder.
+
 ---
 
 ## Adım 2: Beat'lerden Reels bölümlerine

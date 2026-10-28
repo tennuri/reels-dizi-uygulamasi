@@ -94,6 +94,41 @@ bash birlestir.sh $COMFY/output/bolum1 /workspace/dizi/bolum1.mp4
 
 ---
 
+## 7. Mekanı birebir sabitlemek: referans kare
+
+Metin ne kadar detaylı olursa olsun, H3 her klipte odayı yeniden çizer ve eşyalar kayabilir. Kesin çözüm, klibi her seferinde **aynı başlangıç karesinden** başlatmak. Şablondaki `MiniMaxH3ImageToVideo` düğümü ve `fl2va` model dosyası başlangıç karesi alabildiğini gösteriyor, ama senin şablonunda şu an bağlı değil.
+
+**a) Referans kareleri hazırla.** Odanın doğru çıktığı bir klipten bir kare al:
+
+```bash
+mkdir -p /workspace/dizi/refs
+ffmpeg -ss 1 -i $COMFY/output/bolum1/shot_01_00001_.mp4 -frames:v 1 /workspace/dizi/refs/salon_genis.png
+```
+
+Her mekan için farklı kamera açılarına 2–3 kare yeterli (ör. geniş plan, kapıya bakan açı, ters açı). Klip bu karenin aynısıyla başlayacağı için karede kimin durduğu önemli. Ya boş oda karesi kullan ya da o çekimdeki karakterlerin olduğu bir kare.
+
+**b) bible.json'a ekle.** Mekana `refs` alanını ekle (yollar bible.json'un bulunduğu klasöre göre):
+
+```json
+{"id": "L1", "name": "Salon", "visual": "...", "layout": "...",
+ "refs": {"default": "refs/salon_genis.png", "kapi": "refs/salon_kapi.png"}}
+```
+
+Çekim listesinde (`bolum1.json`) farklı bir kare isteyen çekime `"ref": "kapi"` yaz. `ref` yazmayan çekimler `default` karesini kullanır.
+
+**c) Referanslı ikinci şablonu hazırla.** ComfyUI'da şablona bir **Load Image** düğümü ekle, çıkışını `MiniMaxH3ImageToVideo` düğümünün görüntü (başlangıç karesi) girişine bağla. Bir kez Run'a basıp çalıştığını gör, sonra **Export (API)** ile `workflow_ref_api.json` adıyla ayrı kaydet. Eski `workflow_api.json`'u silme, referansı olmayan çekimler onu kullanır.
+
+**d) Çalıştır:**
+
+```bash
+python3 h3_toplu_uret.py --workflow workflow_api.json --ref-workflow workflow_ref_api.json \
+  --bible bible.json --shots bolum1.json --out bolum1
+```
+
+Betik başta `ref kare -> [('…', 'image')]` yazmalı. Kareyi ComfyUI'a kendisi yükler. `--sahne` ile birlikte kullanırsan her grup ilk çekiminin karesiyle başlar.
+
+---
+
 ## Bilmen gerekenler
 
 - **Süre sınırı:** Betik her çekimin süresini 4–15 saniye arasına sıkıştırır (H3'ün klip aralığı). Şablondaki süre ayarı serbest sayı değil de bir liste ise (ör. sadece 5 ve 10) üretim hata verebilir. Öyle olursa haber ver.

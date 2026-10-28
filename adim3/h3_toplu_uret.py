@@ -8,15 +8,48 @@ RunPod Web Terminal'de, ComfyUI açıkken çalıştır:
 Sadece bazı çekimleri yeniden üretmek için:  --only 3 9
 Aynı sahnedeki çekimleri tek klipte üretmek için (mekan tutarlılığı):  --sahne
 Sadece promptları görmek için (üretim yapmadan):  --dry-run
+Mekanı birebir sabitlemek için referans kareyle (başlangıç karesi):  --ref-workflow workflow_ref_api.json
 """
 
 import argparse
 import json
+import os
 import time
 import urllib.request
 import uuid
 
 COMFY = "http://127.0.0.1:8188"
+
+
+def join(parts):
+    """Parçaları cümle olarak birleştirir; noktası olmayanın sonuna nokta koyar."""
+    return " ".join(p if p.rstrip().endswith((".", '"', "!", "?", ":")) else p.rstrip() + "." for p in parts)
+
+
+def setting_text(loc):
+    """Mekan tarifi; varsa eşya yerleşimi ve ortam sesi de eklenir."""
+    text = loc["visual"]
+    if loc.get("layout"):
+        text = join([text, f'Layout: {loc["layout"]}'])
+    if loc.get("ambience"):
+        text = join([text, f'Ambient sound: {loc["ambience"]}'])
+    return text
+
+
+def speech(d, chars):
+    c = chars[d["speaker"]]
+    who = f'{c["name"]} (voice: {c["voice"]})' if c.get("voice") else c["name"]
+    return f'{who} says in Turkish: "{d["line"]}"'
+
+
+def series_sound(bible):
+    """Bütün klipler için sabit müzik ve ses tasarımı satırları."""
+    parts = []
+    if bible.get("music"):
+        parts.append(f'Music: {bible["music"]}')
+    if bible.get("sound"):
+        parts.append(f'Sound design: {bible["sound"]}')
+    return parts
 
 
 def h3_prompt(shot, bible):
@@ -29,24 +62,25 @@ def h3_prompt(shot, bible):
     ]
     for cid in shot.get("characters", []):
         parts.append(f'{chars[cid]["name"]}: {chars[cid]["visual"]}')
-    parts.append(f'Setting: {locs[shot["location"]]["visual"]}')
+    parts.append(f'Setting: {setting_text(locs[shot["location"]])}')
     if shot.get("lighting"):
         parts.append(f'Lighting: {shot["lighting"]}')
     if shot.get("dialogue") and shot["dialogue"].get("line"):
         d = shot["dialogue"]
-        parts.append(f'{chars[d["speaker"]]["name"]} says in Turkish: "{d["line"]}"')
+        parts.append(speech(d, chars))
     if shot.get("audio"):
         parts.append(f'Audio: {shot["audio"]}')
     parts.append(f'Style: {bible["style"]}. Vertical 9:16.')
+    parts += series_sound(bible)
     parts.append("No text, subtitles, logos or watermarks.")
-    return " ".join(parts)
+    return join(parts)
 
 
 def shot_line(shot, chars):
     line = f'Shot {shot["shot"]}: {shot["angle"]}, {shot["size"]}, {shot["movement"]}. {shot["action"]}'
     if shot.get("dialogue") and shot["dialogue"].get("line"):
         d = shot["dialogue"]
-        line += f' {chars[d["speaker"]]["name"]} says in Turkish: "{d["line"]}"'
+        line += " " + speech(d, chars)
     if shot.get("audio"):
         line += f' Audio: {shot["audio"]}.'
     return line
@@ -63,7 +97,8 @@ def h3_scene_prompt(group, bible):
                 cids.append(cid)
 
     parts = [f'Style: {bible["style"]}. Vertical 9:16.']
-    parts.append(f'Setting (identical in every shot, same furniture and layout): {locs[group[0]["location"]]["visual"]}')
+    parts += series_sound(bible)
+    parts.append(f'Setting (identical in every shot, same furniture and layout): {setting_text(locs[group[0]["location"]])}')
     for cid in cids:
         parts.append(f'{chars[cid]["name"]}: {chars[cid]["visual"]}')
     parts.append("Storyboard (each shot its own angle, clean hard cuts, no dissolves):")
@@ -73,7 +108,7 @@ def h3_scene_prompt(group, bible):
         parts.append(f"[{t:g}s-{t + d:g}s] " + shot_line(shot, chars))
         t += d
     parts.append("No text, subtitles, logos or watermarks.")
-    return " ".join(parts)
+    return join(parts)
 
 
 def scene_groups(shots, max_s=15):
@@ -127,6 +162,32 @@ def find_prompt_input(wf):
     return best
 
 
+def shot_ref(shot, bible, bible_dir):
+    """Çekimin mekan referans karesinin dosya yolu (yoksa None).
+    Mekanda "refs": {"genis": "refs/ahir_genis.png", ...}, çekimde "ref": "genis".
+    Çekimde "ref" yoksa mekanın "default" karesi kullanılır."""
+    loc = {l["id"]: l for l in bible["locations"]}[shot["location"]]
+    path = loc.get("refs", {}).get(shot.get("ref", "default"))
+    return os.path.join(bible_dir, path) if path else None
+
+
+def upload_image(path):
+    """Kareyi ComfyUI'ın input klasörüne yükler, LoadImage'a yazılacak adı döndürür."""
+    boundary = uuid.uuid4().hex
+    with open(path, "rb") as f:
+        data = f.read()
+    body = (
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n"
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"image\"; "
+        f"filename=\"{os.path.basename(path)}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+    ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(
+        COMFY + "/upload/image", body, {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+    )
+    res = json.load(urllib.request.urlopen(req))
+    return f'{res["subfolder"]}/{res["name"]}' if res.get("subfolder") else res["name"]
+
+
 def post(path, data):
     req = urllib.request.Request(
         COMFY + path, json.dumps(data).encode(), {"Content-Type": "application/json"}
@@ -156,49 +217,76 @@ def main():
     ap.add_argument("--only", type=int, nargs="*", help="sadece bu çekim numaraları")
     ap.add_argument("--prompt-node", help="prompt girişi elle: node_id:input_adi")
     ap.add_argument("--sahne", action="store_true", help="aynı sahnedeki çekimleri tek klipte üret")
+    ap.add_argument("--ref-workflow", help="LoadImage bağlı ikinci şablon; referans karesi olan çekimlerde kullanılır")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
     wf_template = json.load(open(args.workflow, encoding="utf-8"))
     bible = json.load(open(args.bible, encoding="utf-8"))
     shots = json.load(open(args.shots, encoding="utf-8"))["shots"]
+    bible_dir = os.path.dirname(os.path.abspath(args.bible))
 
-    if args.prompt_node:
-        prompt_at = tuple(args.prompt_node.split(":", 1))
-    else:
-        prompt_at = find_prompt_input(wf_template)
-    duration_at = find_duration_inputs(wf_template)
-    seed_at = find_inputs(wf_template, {"seed", "noise_seed"})
-    prefix_at = find_inputs(wf_template, {"filename_prefix"})
+    def locate(wf, title):
+        """Şablonda prompt, süre, seed ve kayıt girişlerini bulup ekrana yazar."""
+        if args.prompt_node:
+            prompt_at = tuple(args.prompt_node.split(":", 1))
+        else:
+            prompt_at = find_prompt_input(wf)
+        at = {
+            "prompt": prompt_at,
+            "duration": find_duration_inputs(wf),
+            "seed": find_inputs(wf, {"seed", "noise_seed"}),
+            "prefix": find_inputs(wf, {"filename_prefix"}),
+        }
+        print(f"[{title}]")
+        print(f"prompt   -> node {prompt_at[0]} ({wf[prompt_at[0]]['class_type']})")
+        print(f"süre     -> {at['duration'] or 'BULUNAMADI (şablondaki süre kullanılır)'}")
+        print(f"seed     -> {at['seed'] or 'bulunamadı'}")
+        print(f"kayıt    -> {at['prefix'] or 'BULUNAMADI (dosya adları karışabilir)'}")
+        return at
 
-    print(f"prompt   -> node {prompt_at[0]} ({wf_template[prompt_at[0]]['class_type']})")
-    print(f"süre     -> {duration_at or 'BULUNAMADI (şablondaki süre kullanılır)'}")
-    print(f"seed     -> {seed_at or 'bulunamadı'}")
-    print(f"kayıt    -> {prefix_at or 'BULUNAMADI (dosya adları karışabilir)'}")
+    at_base = locate(wf_template, args.workflow)
+
+    wf_ref = json.load(open(args.ref_workflow, encoding="utf-8")) if args.ref_workflow else None
+    image_at = find_inputs(wf_ref, {"image"}) if wf_ref else []
+    if wf_ref:
+        at_ref = locate(wf_ref, args.ref_workflow)
+        print(f"ref kare -> {image_at or 'BULUNAMADI (ref şablonda LoadImage yok)'}")
 
     if args.sahne:
         jobs = [(g[0]["shot"], [x["shot"] for x in g], h3_scene_prompt(g, bible),
-                 sum(x.get("duration_s", 5) for x in g)) for g in scene_groups(shots)]
+                 sum(x.get("duration_s", 5) for x in g), shot_ref(g[0], bible, bible_dir))
+                for g in scene_groups(shots)]
     else:
-        jobs = [(x["shot"], [x["shot"]], h3_prompt(x, bible), x.get("duration_s", 5)) for x in shots]
+        jobs = [(x["shot"], [x["shot"]], h3_prompt(x, bible), x.get("duration_s", 5),
+                 shot_ref(x, bible, bible_dir)) for x in shots]
 
     with open(f"{args.out}_promptlar.txt", "w", encoding="utf-8") as log:
-        for n, covered, text, dur in jobs:
+        for n, covered, text, dur, ref in jobs:
             if args.only and not set(covered) & set(args.only):
                 continue
             label = "Shot " + "+".join(map(str, covered))
             log.write(f"--- {label} ---\n{text}\n\n")
             if args.dry_run:
-                print(f"\n--- {label} ({dur:g} sn) ---\n{text}")
+                print(f"\n--- {label} ({dur:g} sn, ref: {ref or 'yok'}) ---\n{text}")
                 continue
 
-            wf = json.loads(json.dumps(wf_template))
+            use_ref = bool(ref and image_at)
+            if ref and not image_at:
+                print(f"{label}: referans kare var ama --ref-workflow verilmedi, karesiz üretiliyor", flush=True)
+            wf = json.loads(json.dumps(wf_ref if use_ref else wf_template))
+            at = at_ref if use_ref else at_base
+            prompt_at = at["prompt"]
+            if use_ref:
+                name = upload_image(ref)
+                for node_id, key in image_at:
+                    wf[node_id]["inputs"][key] = name
             wf[prompt_at[0]]["inputs"][prompt_at[1]] = text
-            for node_id, key in duration_at:
+            for node_id, key in at["duration"]:
                 wf[node_id]["inputs"][key] = float(max(4, min(15, round(dur))))
-            for node_id, key in seed_at:
+            for node_id, key in at["seed"]:
                 wf[node_id]["inputs"][key] = args.seed + n
-            for node_id, key in prefix_at:
+            for node_id, key in at["prefix"]:
                 wf[node_id]["inputs"][key] = f"{args.out}/shot_{n:02d}"
 
             start = time.time()
