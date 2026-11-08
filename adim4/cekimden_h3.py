@@ -80,6 +80,13 @@ def main():
     esleme = oku(esleme_yol) if os.path.exists(esleme_yol) else {}
     adla = {c["name"].lower(): c["id"] for c in chars}
 
+    sahne_yol = os.path.join(a.klasor, "sahneler.json")
+    sahne_no = {}
+    if os.path.exists(sahne_yol):
+        for sc in oku(sahne_yol)["scenes"]:
+            for n in range(int(sc.get("first_shot", 0)), int(sc.get("last_shot", -1)) + 1):
+                sahne_no[n] = sc.get("scene")
+
     secili = aralik(a.cekimler, max(s["shot"] for s in liste))
     cikti, uyarilar = [], []
     for s in liste:
@@ -109,6 +116,7 @@ def main():
 
         cikti.append({
             "shot": s["shot"],
+            "scene": sahne_no.get(s["shot"]),
             "duration_s": s["duration_s"],
             "orig_start_s": s["start_s"],
             "orig_end_s": s["end_s"],

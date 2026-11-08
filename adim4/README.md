@@ -131,3 +131,15 @@ python3 karsilastir.py /root/videolar/bolum1.mp4 /root/analiz/bolum1 \
 ```
 
 Solda orijinal, sağda H3; ses orijinalden (`--ses h3` ile H3'ün sesi). Üretilmemiş çekimler siyah görünür. ComfyUI'nin output klasörü farklıysa `find / -name "shot_01*.mp4" 2>/dev/null` ile bul.
+
+### Kişi, mekan ve ses klipten klibe değişiyorsa
+
+1. `h3_bible.json`'da her karakter için **tek ve kesin** bir `visual` yaz ("turban or fez" gibi seçenekler olmasın), bir de `voice` alanı ekle (yaş, ton, tempo). Mekanlara `layout` (eşyaların yeri) ve `ambience` (ortam sesi) ekle. `h3_toplu_uret.py` bu alanları her prompta harfi harfine koyar.
+2. Aynı sahnedeki çekimleri tek klipte üret. `cekimden_h3.py`, `sahneler.json`'dan sahne numaralarını alır:
+
+```bash
+python3 h3_toplu_uret.py ... --out deneme2 --sahne
+python3 karsilastir.py /root/videolar/bolum1.mp4 /root/analiz/bolum1 $COMFY/output/deneme2 /root/karsilastirma2.mp4 --cekimler 1-9 --sahne
+```
+
+3. Hâlâ değişiyorsa mekan için referans başlangıç karesi kullan (`--ref-workflow`, bkz. adim3 rehberi bölüm 7).

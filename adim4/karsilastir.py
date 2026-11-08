@@ -52,6 +52,8 @@ def main():
     p.add_argument("cikti", help="karşılaştırma videosu, örn. karsilastirma.mp4")
     p.add_argument("--cekimler", default="", help="örn. 1-9 (varsayılan: üretilmiş klibi olan çekimler)")
     p.add_argument("--ses", choices=["orijinal", "h3"], default="orijinal")
+    p.add_argument("--sahne", action="store_true",
+                   help="klipler h3_toplu_uret.py --sahne ile üretildiyse: her klip birden çok çekimi kapsar")
     a = p.parse_args()
 
     cekimler = json.load(open(os.path.join(a.analiz, "cekim_listesi.json"), encoding="utf-8"))["shots"]
@@ -70,10 +72,19 @@ def main():
     etiket = yazi_var()
     gecici = tempfile.mkdtemp(prefix="karsilastir_")
     parcalar = []
-    for c in cekimler:
-        n = c["shot"]
-        if n not in secili:
-            continue
+    secilen = [c for c in cekimler if c["shot"] in secili]
+    if a.sahne:
+        # --sahne ile üretilen her klip, ilk çekiminden bir sonraki klibin başladığı çekime kadar uzanır
+        bolumler = []
+        uretilmis = [i for i, c in enumerate(secilen) if klip(c["shot"])]
+        for j, i in enumerate(uretilmis):
+            son = (uretilmis[j + 1] - 1) if j + 1 < len(uretilmis) else len(secilen) - 1
+            bolumler.append((secilen[i]["shot"], secilen[son]["shot"], secilen[i]["start_s"], secilen[son]["end_s"]))
+    else:
+        bolumler = [(c["shot"], c["shot"], c["start_s"], c["end_s"]) for c in secilen]
+    for n, son_n, bas, bit in bolumler:
+        c = {"start_s": bas, "end_s": bit}
+        ad = f"{n}" if son_n == n else f"{n}-{son_n}"
         sure = max(0.2, c["end_s"] - c["start_s"])
         h3 = klip(n)
         hedef = os.path.join(gecici, f"{n:04d}.mp4")
@@ -91,7 +102,7 @@ def main():
                f"tpad=stop_mode=clone:stop_duration={sure:.3f}")
         if etiket:
             yazi = "drawtext=fontcolor=white:fontsize=26:box=1:boxcolor=black@0.5:x=12:y=12:text="
-            sol += f",{yazi}'Orijinal - cekim {n}'"
+            sol += f",{yazi}'Orijinal - cekim {ad}'"
             sag += f",{yazi}'H3'" if h3 else f",{yazi}'uretilmedi'"
         filtre = f"{sol}[s];{sag}[g];[s][g]hstack=inputs=2,trim=duration={sure:.3f}[v]"
 
@@ -101,7 +112,7 @@ def main():
                   "-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p",
                   "-c:a", "aac", "-ar", "48000", "-ac", "2", hedef])
         parcalar.append(hedef)
-        print(f"çekim {n}: {sure:.1f} sn {'(H3 yok)' if not h3 else ''}", flush=True)
+        print(f"çekim {ad}: {sure:.1f} sn {'(H3 yok)' if not h3 else ''}", flush=True)
 
     liste = os.path.join(gecici, "liste.txt")
     with open(liste, "w") as f:
