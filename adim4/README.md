@@ -99,3 +99,35 @@ Sonra `--adim birlestir,bible` ile tekrar çalıştır (dosyayı otomatik bulur)
 ## Test durumu
 
 Betiğin `kes`, `analiz`, `birlestir`, `bible` adımları sentetik bir videoda ve sahte bir model sunucusuyla uçtan uca denendi. Gerçek Qwen3-VL, WhisperX ve pyannote ile henüz çalıştırılmadı. İlk gerçek denemede hata çıkarsa çıktıyı bana gönder.
+
+## Sahneleri kendin üretip orijinalle karşılaştırmak
+
+Amaç çekim dilini öğrenmek: aynı çekim listesini H3 ile üretip orijinalle yan yana izleyince plan boyu, kurgu temposu ve oyunculuktaki farkı görürsün. **Üretilen klipleri uygulamada yayınlama**, bu sadece çalışma alıştırması.
+
+**1. Çekim listesini H3 formatına çevir.** İlk denemede bir sahneyle başla (`sahneler.json`'daki `first_shot`-`last_shot`):
+
+```bash
+python3 cekimden_h3.py /root/analiz/bolum1 --cekimler 1-9
+```
+
+Bu, `h3_bible.json` ve `h3_cekimler.json` yazar. Karakter tariflerini (`visual`) `h3_bible.json` içinde elle düzeltmek sonucu en çok iyileştiren adımdır. Konuşmacıları karakterlere bağlamak için klasöre `konusmaci_c.json` koy, örn. `{"SPEAKER_00": "C1", "SPEAKER_01": "C2"}`, sonra komutu tekrar çalıştır.
+
+**2. GPU'yu boşalt ve H3 ile üret.** vLLM terminalinde `Ctrl+C` ile sunucuyu durdur, ComfyUI'yi aç (adim1/adim3 rehberi), sonra:
+
+```bash
+cd /workspace/reels-dizi-uygulamasi/adim3
+python3 h3_toplu_uret.py --workflow workflow_api.json \
+  --bible /root/analiz/bolum1/h3_bible.json --shots /root/analiz/bolum1/h3_cekimler.json --out deneme1
+```
+
+Karşılaştırma çekim çekim yapıldığı için burada `--sahne` kullanma. H3 en az 4 sn ürettiği için kısa çekimler karşılaştırmada orijinal süreye kırpılır.
+
+**3. Yan yana video yap.** Klipler ComfyUI'nin `output/deneme1` klasörüne düşer:
+
+```bash
+cd /workspace/reels-dizi-uygulamasi/adim4
+python3 karsilastir.py /root/videolar/bolum1.mp4 /root/analiz/bolum1 \
+  /workspace/runpod-slim/ComfyUI/output/deneme1 /root/karsilastirma.mp4 --cekimler 1-9
+```
+
+Solda orijinal, sağda H3; ses orijinalden (`--ses h3` ile H3'ün sesi). Üretilmemiş çekimler siyah görünür. ComfyUI'nin output klasörü farklıysa `find / -name "shot_01*.mp4" 2>/dev/null` ile bul.
