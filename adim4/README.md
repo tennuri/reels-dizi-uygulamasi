@@ -143,3 +143,13 @@ python3 karsilastir.py /root/videolar/bolum1.mp4 /root/analiz/bolum1 $COMFY/outp
 ```
 
 3. Hâlâ değişiyorsa mekan için referans başlangıç karesi kullan (`--ref-workflow`, bkz. adim3 rehberi bölüm 7).
+
+## Tek komutla (pod yeniden başladıktan sonra da)
+
+Container diski pod durunca ya da reset atılınca silinir. `tam_calistir.sh` eksik kurulumu yapar, tüm adımları sırayla çalıştırır, vLLM'i kendisi açıp kapatır ve JSON'ları kalıcı volume'a (`/workspace/dizi/analiz/<ad>/`) yedekler. Yedek varsa sonraki seferde biten adımları atlar.
+
+```bash
+export HF_TOKEN=hf_...
+cd /workspace/reels-dizi-uygulamasi/adim4
+bash tam_calistir.sh /root/videolar/bolum1.mp4 bolum1 1-9
+```
