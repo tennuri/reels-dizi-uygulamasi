@@ -16,6 +16,36 @@ import os
 import sys
 
 
+def guvenli_siniflari_ekle(torch):
+    """torch >= 2.6 checkpoint'leri weights_only=True ile açıyor. pyannote checkpoint'leri
+    omegaconf ve pyannote'un kendi meta veri sınıflarını içerdiği için reddediliyor.
+    Güvenliği kapatmak yerine sadece bu bilinen sınıfları izin listesine ekliyoruz."""
+    import collections
+    import importlib
+    import typing
+
+    adlar = [
+        ("omegaconf.listconfig", "ListConfig"),
+        ("omegaconf.dictconfig", "DictConfig"),
+        ("omegaconf.base", "ContainerMetadata"),
+        ("omegaconf.base", "Metadata"),
+        ("omegaconf.nodes", "AnyNode"),
+        ("pyannote.audio.core.model", "Introspection"),
+        ("pyannote.audio.core.task", "Specifications"),
+        ("pyannote.audio.core.task", "Problem"),
+        ("pyannote.audio.core.task", "Resolution"),
+        ("torch.torch_version", "TorchVersion"),
+    ]
+    siniflar = [typing.Any, list, dict, int, collections.defaultdict]
+    for mod, ad in adlar:
+        try:
+            siniflar.append(getattr(importlib.import_module(mod), ad))
+        except Exception:
+            pass
+    if hasattr(torch.serialization, "add_safe_globals"):
+        torch.serialization.add_safe_globals(siniflar)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("wav")
@@ -29,6 +59,8 @@ def main():
     a = p.parse_args()
 
     import torch
+
+    guvenli_siniflari_ekle(torch)
     import whisperx
 
     cihaz = "cuda" if torch.cuda.is_available() else "cpu"
