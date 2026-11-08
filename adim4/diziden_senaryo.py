@@ -377,7 +377,17 @@ def adim_bible(a):
     cevap = sohbet(a.llm_url, a.llm_model, [{"role": "user", "content": BIBLE_PROMPT.format(
         konusmacilar=", ".join(konusmacilar) or "-",
         sahneler=json.dumps(sahneler, ensure_ascii=False))}], max_tokens=6000)
+    with open(os.path.join(a.cikti, "bible_ham_cevap.txt"), "w", encoding="utf-8") as f:
+        f.write(cevap)
     bible = json_ayikla(cevap)
+    # Model bazen {"bible": {...}} gibi sarıyor ya da anahtarları farklı adlandırıyor
+    if "characters" not in bible:
+        for v in bible.values():
+            if isinstance(v, dict) and "characters" in v:
+                bible = v
+                break
+    if not bible.get("characters"):
+        log("  UYARI: bible'da karakter yok, modelin ham cevabı: bible_ham_cevap.txt")
     hedef = os.path.join(a.cikti, "bible_taslak.json")
     yaz_json(hedef, bible)
     log(f"[bible] {len(bible.get('characters', []))} karakter, {len(bible.get('locations', []))} mekan, "
