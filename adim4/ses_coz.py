@@ -90,9 +90,14 @@ def main():
             from whisperx.diarize import DiarizationPipeline
         except ImportError:  # eski WhisperX sürümleri
             DiarizationPipeline = whisperx.DiarizationPipeline
-        diar = DiarizationPipeline(use_auth_token=a.hf_token, device=cihaz)
-        konusmalar = diar(ses, min_speakers=a.min_konusmaci, max_speakers=a.max_konusmaci)
-        sonuc = whisperx.assign_word_speakers(konusmalar, sonuc)
+        try:
+            diar = DiarizationPipeline(use_auth_token=a.hf_token, device=cihaz)
+            konusmalar = diar(ses, min_speakers=a.min_konusmaci, max_speakers=a.max_konusmaci)
+            sonuc = whisperx.assign_word_speakers(konusmalar, sonuc)
+        except Exception as e:
+            # Yazıya dökme boşa gitmesin: konuşmacısız kaydet, sonra tekrar denenebilir
+            print(f"[ses] UYARI: konuşmacı ayrımı başarısız, konuşmacısız kaydediliyor: {e!r}",
+                  file=sys.stderr, flush=True)
     else:
         print("[ses] HF_TOKEN yok, konuşmacı ayrımı atlandı", file=sys.stderr, flush=True)
 

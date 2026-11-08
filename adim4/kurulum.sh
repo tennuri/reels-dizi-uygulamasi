@@ -24,6 +24,8 @@ if [[ $NE == hepsi || $NE == ses ]]; then
   # --isolated: RunPod imajındaki pip ayarlarını (torch 2.10 kilidi) yok say
   "$KOK/venv-ses/bin/pip" --isolated install -q --index-url https://download.pytorch.org/whl/cu128 \
     "torch==2.8.0" "torchaudio==2.8.0"
+  # pyannote.audio 3.x, huggingface_hub 1.0'da kaldırılan use_auth_token parametresini kullanıyor
+  "$KOK/venv-ses/bin/pip" --isolated install -q "huggingface_hub<1.0" "transformers<5"
   "$KOK/venv-ses/bin/python" -c "import whisperx.asr" || { echo "WhisperX import edilemedi"; exit 1; }
 fi
 
