@@ -332,20 +332,24 @@ Answer with JSON only:
 SHOTS:
 {satirlar}"""
 
-BIBLE_PROMPT = """Below is the scene list of a TV episode, extracted automatically from video and dialogue.
-Build a draft series bible in this exact JSON shape, with ids C1.. and L1..:
-{{
-  "title": "",
-  "style": "one paragraph: look, palette, lens feel, lighting, editing rhythm",
-  "characters": [{{"id": "C1", "name": "speaker name if known, else a role", "role": "one sentence", "visual": "fixed English visual description", "labels": ["the visual labels used in the scene list for this person"]}}],
-  "locations": [{{"id": "L1", "name": "", "visual": "fixed English description", "labels": ["location names used in the scene list"]}}],
-  "beats": [{{"n": 1, "summary": "", "characters": ["C1"], "location": "L1", "scenes": [1, 2]}}]
-}}
-Speaker names from dialogue: {konusmacilar}
-Answer with JSON only.
+BIBLE_PROMPT = """You are a story editor. Below is the scene list of a TV episode, extracted automatically from video and dialogue.
 
 SCENES:
-{sahneler}"""
+{sahneler}
+
+Speaker labels found in the dialogue: {konusmacilar}
+
+Task: write a draft series bible for THIS episode.
+- "characters": every recurring person in the scenes above (merge visual labels that describe the same person). Give each an id C1, C2, ... At least the main characters; never leave this list empty.
+- "locations": every distinct place, ids L1, L2, ...
+- "beats": one beat per important story moment, in order, referring to the scene numbers.
+- "visual" fields: fixed English descriptions (age, face, hair, clothing / furniture, light) reusable in a video prompt.
+
+Answer with JSON only, in this shape:
+{{"title": "short working title", "style": "one paragraph: look, palette, lens feel, lighting, editing rhythm",
+ "characters": [{{"id": "C1", "name": "name if spoken in dialogue, else a role", "role": "one sentence", "visual": "...", "labels": ["labels from the scene list"]}}],
+ "locations": [{{"id": "L1", "name": "...", "visual": "...", "labels": ["location names from the scene list"]}}],
+ "beats": [{{"n": 1, "summary": "...", "characters": ["C1"], "location": "L1", "scenes": [1, 2]}}]}}"""
 
 
 def adim_bible(a):
@@ -374,10 +378,28 @@ def adim_bible(a):
         log(f"[bible] {len(sahneler)} sahne -> {sahne_yol}")
 
     konusmacilar = sorted({d["speaker"] for s in liste for d in s["dialogue"]})
-    cevap = sohbet(a.llm_url, a.llm_model, [{"role": "user", "content": BIBLE_PROMPT.format(
+    mesajlar = [{"role": "user", "content": BIBLE_PROMPT.format(
         konusmacilar=", ".join(konusmacilar) or "-",
-        sahneler=json.dumps(sahneler, ensure_ascii=False))}], max_tokens=6000)
-    bible = json_ayikla(cevap)
+        sahneler=json.dumps(sahneler, ensure_ascii=False))}]
+    for deneme in range(2):
+        cevap = sohbet(a.llm_url, a.llm_model, mesajlar, max_tokens=6000)
+        with open(os.path.join(a.cikti, "bible_ham_cevap.txt"), "w", encoding="utf-8") as f:
+            f.write(cevap)
+        bible = json_ayikla(cevap)
+        if bible.get("characters") or deneme == 1:
+            break
+        log("  bible boş geldi, model bir kez daha uyarılarak deneniyor")
+        mesajlar += [{"role": "assistant", "content": cevap},
+                     {"role": "user", "content": "Your lists are empty. Fill characters, locations and beats "
+                                                 "from the scenes above. JSON only."}]
+    # Model bazen {"bible": {...}} gibi sarıyor ya da anahtarları farklı adlandırıyor
+    if "characters" not in bible:
+        for v in bible.values():
+            if isinstance(v, dict) and "characters" in v:
+                bible = v
+                break
+    if not bible.get("characters"):
+        log("  UYARI: bible'da karakter yok, modelin ham cevabı: bible_ham_cevap.txt")
     hedef = os.path.join(a.cikti, "bible_taslak.json")
     yaz_json(hedef, bible)
     log(f"[bible] {len(bible.get('characters', []))} karakter, {len(bible.get('locations', []))} mekan, "

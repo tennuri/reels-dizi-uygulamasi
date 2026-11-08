@@ -20,6 +20,13 @@ if [[ $NE == hepsi || $NE == ses ]]; then
   python3 -m venv "$KOK/venv-ses"
   "$KOK/venv-ses/bin/pip" install -q --upgrade pip
   "$KOK/venv-ses/bin/pip" install -q whisperx
+  # pyannote.audio 3.x, torchaudio 2.9'daki AudioMetaData kaldırılınca bozuluyor
+  # --isolated: RunPod imajındaki pip ayarlarını (torch 2.10 kilidi) yok say
+  "$KOK/venv-ses/bin/pip" --isolated install -q --index-url https://download.pytorch.org/whl/cu128 \
+    "torch==2.8.0" "torchaudio==2.8.0"
+  # pyannote.audio 3.x, huggingface_hub 1.0'da kaldırılan use_auth_token parametresini kullanıyor
+  "$KOK/venv-ses/bin/pip" --isolated install -q "huggingface_hub<1.0" "transformers<5"
+  "$KOK/venv-ses/bin/python" -c "import whisperx.asr" || { echo "WhisperX import edilemedi"; exit 1; }
 fi
 
 if [[ $NE == hepsi || $NE == vlm ]]; then
@@ -29,7 +36,7 @@ if [[ $NE == hepsi || $NE == vlm ]]; then
   "$KOK/venv-vlm/bin/pip" install -q vllm
 fi
 
-cat <<'EOF'
+cat <<EOF
 
 Kurulum bitti.
 
@@ -39,10 +46,10 @@ Kurulum bitti.
    (rehberde linkler var).
 
 2) Qwen3-VL sunucusunu başlat (ayrı bir terminalde):
-     /workspace/venv-vlm/bin/vllm serve Qwen/Qwen3-VL-8B-Instruct \
-       --max-model-len 32768 --gpu-memory-utilization 0.70 \
+     $KOK/venv-vlm/bin/vllm serve Qwen/Qwen3-VL-8B-Instruct \\
+       --max-model-len 32768 --gpu-memory-utilization 0.70 \\
        --limit-mm-per-prompt '{"image": 8}'
 
 3) Çalıştır:
-     python3 diziden_senaryo.py bolum1.mp4 --cikti analiz/bolum1
+     python3 diziden_senaryo.py bolum1.mp4 --cikti analiz/bolum1 --ses-python $KOK/venv-ses/bin/python
 EOF
