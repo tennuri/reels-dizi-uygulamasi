@@ -9,6 +9,7 @@ Bir kitabı senaryoya, çekim listesine ve MiniMax H3 ile üretilen dikey (9:16)
 | [adim1](adim1/) | H3'ü RunPod'da (ComfyUI ile) çalıştırma rehberi |
 | [adim2](adim2/) | Kitap → bölümler → çekimler → H3 promptları için LLM şablonları |
 | [adim3](adim3/) | Çekim listesini toplu üreten betik (`h3_toplu_uret.py`), klipleri birleştiren betik (`birlestir.sh`) ve kullanım rehberi |
+| [adim4](adim4/) | Hazır bir dizi bölümünden çekim listesi, diyalog ve bible taslağı çıkaran zincir (PySceneDetect + WhisperX + Qwen3-VL) |
 
 ## Akış
 
