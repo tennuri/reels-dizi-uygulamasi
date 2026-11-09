@@ -129,10 +129,106 @@ Betik başta `ref kare -> [('…', 'image')]` yazmalı. Kareyi ComfyUI'a kendisi
 
 ---
 
+## 8. Karakter ve mekanı bütün dizi boyunca sabitlemek
+
+Metin tarifi ne kadar ayrıntılı olursa olsun, H3 her klipte yüzü ve odayı yeniden çizer. Bu yüzden Derin 1. bölümde başka, 5. bölümde başka çıkıyor. Çözüm, her karakterin ve her mekanın **bir kez onaylanmış görselini** tutmak ve her çekimin ilk karesini bu görsellerden kurmak. H3 klibi o kareden başlattığı için yüz, kıyafet ve eşyalar hep aynı kaynaktan gelir.
+
+Akış şöyle:
+
+1. **Karakter kartı:** Her karakter için bir kez, düz gri fonda önden, yarı yandan ve profilden tam boy görsel üretilir. Beğendiğini seçersin, bu kart bütün dizi boyunca o karakterin kimliği olur.
+2. **Mekan karesi:** Her mekan için bir kez, boş oda görseli üretilir (eşya yerleşimi bible'daki `layout`'tan). Farklı kamera açıları bu kareden türetilir, böylece eşyalar açıdan açıya da değişmez.
+3. **Çekim karesi:** Her çekim için mekan karesi + o çekimdeki karakterlerin kartları bir görüntü düzenleme modeline (Qwen-Image-Edit) verilir, model karakterleri odaya yerleştirip çekimin ilk karesini kurar.
+4. **H3:** 7. maddedeki referanslı şablon bu kareyle başlar.
+
+Hepsini [tutarlilik.py](tutarlilik.py) yapar.
+
+### a) Bir kerelik: iki görsel şablonu
+
+ComfyUI'da **Workflow → Browse Templates** içinden:
+
+- **Qwen-Image** (metinden görsel) şablonunu aç, eksik modelleri şablonun gösterdiği linklerden indir, bir kez Run'a bas. Sonra **Export (API)** ile `workflow_qwen_t2i_api.json` olarak kaydet.
+- **Qwen-Image-Edit 2509** (ya da listede varsa daha yeni sürümü) şablonunu aç. Bu şablonda **3 tane Load Image** olmalı ve üçü de `TextEncodeQwenImageEditPlus` düğümünün `image1`, `image2`, `image3` girişlerine bağlı olmalı. Bağlı değilse (mor/soluk görünüyorsa) bypass'ı kaldırıp bağla. Bir kez Run'a bas, **Export (API)** ile `workflow_qwen_edit_api.json` olarak kaydet.
+
+Varsa 4 ya da 8 adımlık "Lightning" LoRA'lı sürümü seç, görsel başına birkaç saniyeye iner. Modeller toplam 40 GB civarı, 200 GB'lık disk yeter. Pod kalıcı volume'suz olduğu için pod silinirse yeniden inmeleri gerekir.
+
+Betik başta bulduklarını yazar. Edit şablonu için şuna benzer bir satır görmelisin:
+
+```
+görsel -> ['78', '106', '108'] (sırasıyla image1, image2, ...)
+```
+
+### b) Karakter kartları
+
+```bash
+cd /workspace/dizi
+python3 tutarlilik.py durum --bible bible.json
+python3 tutarlilik.py karakter --bible bible.json --t2i workflow_qwen_t2i_api.json --kim C1 C2 --aday 4
+```
+
+Adaylar `refs/adaylar/C1_1.png ... C1_4.png` olarak çıkar. JupyterLab'de bak, en iyisini seç:
+
+```bash
+python3 tutarlilik.py sec --bible bible.json C1 3
+```
+
+Bu, `refs/karakter/C1.png`'yi oluşturur ve bible.json'a `"sheet": "refs/karakter/C1.png"` yazar (eski hali `bible.json.yedek`). Hiçbiri olmadıysa `--seed 500` ile yeni adaylar üret ya da önce bible'daki `visual` tarifini düzelt. `--kim` vermezsen bütün karakterleri üretir.
+
+### c) Mekan kareleri
+
+```bash
+python3 tutarlilik.py mekan --bible bible.json --t2i workflow_qwen_t2i_api.json --kim L1 L7 --aday 4
+python3 tutarlilik.py sec --bible bible.json L1 2
+```
+
+Eşyaların yeri bible'daki `layout` ile uyuşmuyorsa ya başka bir aday seç ya da `layout`'u düzelt. Elinde 7. maddeden kalan, odanın doğru çıktığı bir kare varsa onu da doğrudan `refs/mekan/L1_default.png` olarak koyup bible'a yazabilirsin.
+
+Ters açı gibi başka açılar varsayılan kareden türetilir (aynı eşyalar, kamera döner):
+
+```bash
+python3 tutarlilik.py mekan --bible bible.json --edit workflow_qwen_edit_api.json --kim L1 \
+  --aci ters --tarif "reverse angle from the window side, looking toward the entrance door at the back right" --aday 3
+python3 tutarlilik.py sec --bible bible.json L1 1 --aci ters
+```
+
+Çekim listesinde bu açıyı isteyen çekime `"ref": "ters"` yaz.
+
+### d) Bölümün çekim kareleri
+
+```bash
+python3 tutarlilik.py kare --bible bible.json --edit workflow_qwen_edit_api.json \
+  --shots bolum1.json --out bolum1
+```
+
+Kareler `kareler/bolum1/shot_01.png ...` olarak çıkar. Karakteri olmayan çekimlerde mekan karesi aynen kullanılır. Üçten fazla kişili çekimlerde fazla kartlar yan yana tek görselde birleştirilir. Önce `--dry-run` ile promptlara bakabilirsin.
+
+Kötü çıkan kareyi silmeden yeniden üretmek için: `--only 4 7 --yeniden --seed 300`. **Kareleri H3'e geçmeden önce kontrol et**: bir kare iki dakikada düzelir, bir H3 klibi çok daha pahalı.
+
+`--sahne` ile üreteceksen burada da `--sahne` ekle. O zaman her grup için bir kare kurulur ve içine grubun bütün karakterleri konur.
+
+### e) H3 ile üret
+
+```bash
+python3 h3_toplu_uret.py --workflow workflow_api.json --ref-workflow workflow_ref_api.json \
+  --bible bible.json --shots bolum1.json --out bolum1 --kareler kareler/bolum1
+```
+
+Betik başta `kareler -> 12/12 üretim için hazır başlangıç karesi` yazar. Karesi olmayan çekim mekan karesine, o da yoksa karesiz üretime düşer.
+
+Önce bütün bölümün karelerini, sonra bütün klipleri üret. İki model 48 GB'a birlikte sığmayabilir, ComfyUI aralarında geçerken birini bellekten atar ve bu her çekimde tekrarlanırsa çok zaman kaybettirir.
+
+### Bilmen gerekenler
+
+- **`refs/` klasörü ve `bible.json` dizinin kimliği.** Pod silinirse gider. Her seçimden sonra bilgisayarına indir, yeni pod'da `/workspace/dizi`'ye geri koy.
+- **Seed karakteri sabitlemez.** Aynı seed farklı promptla farklı yüz verir. Sabitleyen şey kart görseli. Seed sadece aynı karenin tekrar aynı çıkmasını sağlar.
+- **Kıyafet değişirse** (düğün, hastane) o karakter için ikinci bir kart üret, ör. bible'a `"id": "C1-dugun"` adında ayrı bir karakter olarak ekle, aynı `visual`'i kıyafet kısmını değiştirip kullan.
+- **Klip içinde yüz yine kayarsa** sonraki adım ana karakterler (Derin, Barış) için LoRA eğitmek: onayladığın 20–30 kareden Qwen-Image LoRA'sı, A40'ta birkaç saat. Önce bu sistemle bir bölüm üretip sonucu görelim.
+
+---
+
 ## Bilmen gerekenler
 
 - **Süre sınırı:** Betik her çekimin süresini 4–15 saniye arasına sıkıştırır (H3'ün klip aralığı). Şablondaki süre ayarı serbest sayı değil de bir liste ise (ör. sadece 5 ve 10) üretim hata verebilir. Öyle olursa haber ver.
-- **Tutarlılık:** Her klip ayrı üretildiği için yüzler yine de biraz değişebilir. Bunu ilk bölümde göreceğiz. Çözüm yolları: tarifleri daha ayırt edici yapmak, ya da aynı sahnedeki 2–3 kısa çekimi senin ilk denemendeki gibi `[0s-3s] Shot 1: ... [3s-6s] Shot 2: ...` formatında tek üretimde birleştirmek. İlk denemendeki prompt da bir klibin içinde birden fazla çekim istiyordu.
+- **Tutarlılık:** Her klip ayrı üretildiği için yüzler değişebilir. Asıl çözüm 8. madde (karakter kartı + çekim karesi). Ek olarak: tarifleri daha ayırt edici yapmak, ya da aynı sahnedeki 2–3 kısa çekimi senin ilk denemendeki gibi `[0s-3s] Shot 1: ... [3s-6s] Shot 2: ...` formatında tek üretimde birleştirmek. İlk denemendeki prompt da bir klibin içinde birden fazla çekim istiyordu.
 - **Mekan her klipte değişiyorsa:** `--sahne` ekle. Betik aynı sahnedeki art arda çekimleri (toplam 15 saniyeyi geçmeyecek şekilde) tek bir H3 üretiminde `[0s-5s] Shot 1: ... [5s-11s] Shot 2: ...` formatıyla birleştirir. H3 tek klibin içinde aynı odayı korur. Ayrıca `bible.json`'daki mekan tarifine eşyaların yerini yaz (ör. "dining table against the left wall under the window, red sofa on the right wall, glass china cabinet in the back left corner").
 - **Ses:** Türkçe diyaloğun nasıl çıktığına dikkat et. Kötüyse `bolum1.json`'daki `dialogue` satırlarını boşaltıp sesi sonradan ekleriz.
 - **Maliyet:** Log'daki "bitti, X sn" sürelerine bak. Klip başına süreyi bilirsek bütün dizinin maliyetini hesaplayabiliriz.
