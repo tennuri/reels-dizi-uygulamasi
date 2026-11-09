@@ -9,6 +9,8 @@ Sadece bazı çekimleri yeniden üretmek için:  --only 3 9
 Aynı sahnedeki çekimleri tek klipte üretmek için (mekan tutarlılığı):  --sahne
 Sadece promptları görmek için (üretim yapmadan):  --dry-run
 Mekanı birebir sabitlemek için referans kareyle (başlangıç karesi):  --ref-workflow workflow_ref_api.json
+Karakter + mekan tutarlılığı için tutarlilik.py'nin kurduğu başlangıç kareleriyle:
+    --ref-workflow workflow_ref_api.json --kareler kareler/bolum1
 """
 
 import argparse
@@ -218,6 +220,7 @@ def main():
     ap.add_argument("--prompt-node", help="prompt girişi elle: node_id:input_adi")
     ap.add_argument("--sahne", action="store_true", help="aynı sahnedeki çekimleri tek klipte üret")
     ap.add_argument("--ref-workflow", help="LoadImage bağlı ikinci şablon; referans karesi olan çekimlerde kullanılır")
+    ap.add_argument("--kareler", help="tutarlilik.py kare çıktısı (ör. kareler/bolum1); shot_NN.png varsa başlangıç karesi o olur")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -260,6 +263,16 @@ def main():
     else:
         jobs = [(x["shot"], [x["shot"]], h3_prompt(x, bible), x.get("duration_s", 5),
                  shot_ref(x, bible, bible_dir)) for x in shots]
+
+    if args.kareler:
+        kdir = os.path.join(bible_dir, args.kareler) if not os.path.isabs(args.kareler) else args.kareler
+        found = 0
+        for i, (n, covered, text, dur, ref) in enumerate(jobs):
+            k = os.path.join(kdir, f"shot_{n:02d}.png")
+            if os.path.exists(k):
+                jobs[i] = (n, covered, text, dur, k)
+                found += 1
+        print(f"kareler  -> {found}/{len(jobs)} üretim için hazır başlangıç karesi ({kdir})")
 
     with open(f"{args.out}_promptlar.txt", "w", encoding="utf-8") as log:
         for n, covered, text, dur, ref in jobs:
