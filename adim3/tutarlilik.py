@@ -218,8 +218,10 @@ def sheet_prompt(c, bible):
         "Three full-body views side by side on a plain light-grey studio background: front view, "
         "three-quarter view, side profile; same person, same outfit and hairstyle in every view; "
         "neutral relaxed expression, arms slightly away from the body.",
+        "Real photograph of a real person, not a 3D render, not CGI, not an illustration.",
         "Even soft studio lighting, photorealistic, sharp facial detail, natural skin texture.",
-        "No text, no names, no signatures, no labels, no logos, no watermark.",
+        "Blank background with absolutely no writing: no text, no age or height labels, no numbers, "
+        "no names, no signatures, no logos, no watermark.",
     ])
 
 
