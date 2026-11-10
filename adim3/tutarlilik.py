@@ -32,6 +32,7 @@ Alt komutlar (RunPod'da, ComfyUI açıkken, bible.json'un olduğu klasörde):
 
 import argparse
 import json
+import re
 import os
 import shutil
 import sys
@@ -211,15 +212,31 @@ def sentence(p):
     return p if p.endswith((".", "!", "?", '"')) else p + "."
 
 
+def photo_visual(text):
+    """Kart için tarifteki rakamları kelimeye çevirir: model "55 years / 175 cm" gibi
+    rakamları görselin üstüne etiket olarak yazıyor."""
+    def age(m):
+        n = int(m.group(1))
+        tens = {2: "twenties", 3: "thirties", 4: "forties", 5: "fifties", 6: "sixties", 7: "seventies"}.get(n // 10)
+        if not tens:
+            return "adult"
+        part = "early" if n % 10 <= 3 else "mid" if n % 10 <= 6 else "late"
+        return f"in {'his' if 'man' in text.lower().split(',')[0] and 'woman' not in text.lower().split(',')[0] else 'her'} {part} {tens}"
+    text = re.sub(r"(\d+) years old", age, text)
+    text = re.sub(r"\s*\(about [^)]*\)", "", text)
+    text = re.sub(r"\b\d+\s*cm tall,?\s*", "", text)
+    return text
+
+
 def sheet_prompt(c, bible):
+    # "character sheet" ifadesi modeli 3D render + yazılı tasarım sayfasına itiyor, kullanma
     return " ".join([
-        "Character reference sheet of one person.",
-        sentence(c["visual"]),
-        "Three full-body views side by side on a plain light-grey studio background: front view, "
-        "three-quarter view, side profile; same person, same outfit and hairstyle in every view; "
-        "neutral relaxed expression, arms slightly away from the body.",
-        "Even soft studio lighting, photorealistic, sharp facial detail, natural skin texture.",
-        "No text, no names, no signatures, no labels, no logos, no watermark.",
+        "Studio photograph, shot on a full-frame DSLR with an 85mm lens: three photos side by side "
+        "of the same real person against a seamless plain light-grey backdrop: front view, "
+        "three-quarter view and side profile, full body head to shoes.",
+        sentence(photo_visual(c["visual"])),
+        "Same person, same outfit and hairstyle in all three photos; neutral relaxed expression.",
+        "Natural skin texture with pores, realistic fabric, soft even studio light, fashion lookbook photography.",
     ])
 
 
