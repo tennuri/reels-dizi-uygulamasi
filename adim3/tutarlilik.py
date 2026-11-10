@@ -12,6 +12,7 @@ Alt komutlar (RunPod'da, ComfyUI açıkken, bible.json'un olduğu klasörde):
     karakter  Karakter kartı adayları üretir (Qwen-Image, metinden görsel).
     mekan     Boş mekan karesi adayları üretir. Varsayılan kare varsa diğer açıları
               ondan türetir (aynı eşyalar, farklı kamera).
+    duzelt    Seçili kartı/kareyi tarif ettiğin yerden düzeltir (ör. tablo, ben, sakal).
     sec       Beğendiğin adayı referans yapar ve bible.json'a yazar.
     kare      Bir bölümün her çekimi için başlangıç karesini kurar
               (mekan karesi + o çekimdeki karakterlerin kartları).
@@ -45,7 +46,8 @@ COMFY = "http://127.0.0.1:8188"
 DIKEY = (928, 1664)   # 9:16, mekan ve çekim kareleri
 YATAY = (1664, 928)   # 16:9, karakter kartı (üç görünüş yan yana)
 
-NEG_PEOPLE = "No people, no characters, no text, no logos, no watermark."
+NEG_PEOPLE = ("No people, no characters, no portraits or photographs of people on the walls "
+              "(wall art shows only landscapes or still lifes), no text, no logos, no watermark.")
 
 
 # ---------- ComfyUI ----------
@@ -211,13 +213,13 @@ def sentence(p):
 
 def sheet_prompt(c, bible):
     return " ".join([
-        f'Character reference sheet of {c["name"]}.',
+        "Character reference sheet of one person.",
         sentence(c["visual"]),
         "Three full-body views side by side on a plain light-grey studio background: front view, "
         "three-quarter view, side profile; same person, same outfit and hairstyle in every view; "
         "neutral relaxed expression, arms slightly away from the body.",
         "Even soft studio lighting, photorealistic, sharp facial detail, natural skin texture.",
-        "No text, no labels, no logos, no watermark.",
+        "No text, no names, no signatures, no labels, no logos, no watermark.",
     ])
 
 
@@ -358,6 +360,39 @@ def cmd_mekan(a, bible, bdir):
             print(f"{lid} {aci} aday {i}: {dest}", flush=True)
 
 
+def cmd_duzelt(a, bible, bdir):
+    """Seçili referans görseli (karakter kartı ya da mekan karesi) tarif edilen yerden düzeltir."""
+    chars, locs = by_id(bible)
+    aci = a.aci or "default"
+    if a.id in chars:
+        rel = chars[a.id].get("sheet")
+        name = lambda i: f"{a.id}_{i}.png"
+        keep = "the same person, face, hairstyle, body, outfit, poses, background and lighting"
+    elif a.id in locs:
+        rel = locs[a.id].get("refs", {}).get(aci)
+        name = lambda i: f"{a.id}_{aci}_{i}.png"
+        keep = "the same camera, framing, lighting, walls, window and every other piece of furniture"
+    else:
+        raise SystemExit(f"{a.id} bible'da yok.")
+    if not rel:
+        raise SystemExit(f"{a.id} için önce bir referans seç (sec).")
+    src = os.path.join(bdir, rel)
+    text = f"Edit image 1: {sentence(a.tarif)} Change nothing else: keep {keep} exactly as in image 1."
+    if a.id in locs:
+        text += " " + NEG_PEOPLE
+    wf = json.load(open(a.edit, encoding="utf-8"))
+    at = locate(wf, a.edit, need_images=True)
+    if a.dry_run:
+        print(f"\n--- {a.id} ({rel}) ---\n{text}")
+        return
+    up = upload_image(src)
+    for i in range(1, a.aday + 1):
+        dest = os.path.join(bdir, "refs", "adaylar", name(i))
+        run_and_fetch(fill(wf, at, text, a.seed + i, f"adaylar/{a.id}", images=[up]), dest)
+        print(f"{a.id} düzeltme adayı {i}: {dest}", flush=True)
+    print(f"Beğendiğini 'sec {a.id} N" + (f" --aci {aci}'" if a.id in locs and aci != "default" else "'") + " ile seç.")
+
+
 def cmd_sec(a, bible, bdir, bible_path):
     chars, locs = by_id(bible)
     if a.id in chars:
@@ -485,6 +520,12 @@ def main():
     p.add_argument("--aci", help="açı adı, ör. ters, kapi (boşsa default)")
     p.add_argument("--tarif", help="yeni açıda kameranın nereye baktığı (İngilizce)")
     p.add_argument("--aday", type=int, default=4)
+    p = common(sub.add_parser("duzelt"))
+    p.add_argument("id", help="C1, L1 ...")
+    p.add_argument("--edit", required=True, help="Qwen-Image-Edit şablonu")
+    p.add_argument("--tarif", required=True, help="ne değişecek (İngilizce)")
+    p.add_argument("--aci", help="mekan açısı (boşsa default)")
+    p.add_argument("--aday", type=int, default=3)
     p = common(sub.add_parser("sec"))
     p.add_argument("id", help="C1, L1 ...")
     p.add_argument("no", type=int, help="aday numarası")
@@ -506,6 +547,8 @@ def main():
         cmd_karakter(a, bible, bdir)
     elif a.cmd == "mekan":
         cmd_mekan(a, bible, bdir)
+    elif a.cmd == "duzelt":
+        cmd_duzelt(a, bible, bdir)
     elif a.cmd == "sec":
         cmd_sec(a, bible, bdir, a.bible)
     elif a.cmd == "kare":
