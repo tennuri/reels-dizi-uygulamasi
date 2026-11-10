@@ -41,7 +41,29 @@ def get_json(url):
         return json.load(r)
 
 
+def running_comfy_dir():
+    """Çalışan ComfyUI sürecinin klasörü (pod'da birden fazla ComfyUI kopyası olabiliyor)."""
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            args = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
+            cwd = os.readlink(f"/proc/{pid}/cwd")
+        except OSError:
+            continue
+        for arg in args:
+            arg = arg.decode(errors="ignore")
+            if arg.endswith("main.py"):
+                d = os.path.dirname(os.path.join(cwd, arg))
+                if os.path.isdir(os.path.join(d, "models")):
+                    return d
+    return None
+
+
 def comfy_dir():
+    d = running_comfy_dir()
+    if d:
+        return d
     res = subprocess.run(["find", "/workspace", "/", "-maxdepth", "4", "-type", "d", "-name", "custom_nodes"],
                          capture_output=True, text=True)
     hits = [os.path.dirname(p) for p in res.stdout.split()
