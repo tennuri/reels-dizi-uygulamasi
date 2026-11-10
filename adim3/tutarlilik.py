@@ -213,13 +213,13 @@ def sentence(p):
 
 def sheet_prompt(c, bible):
     return " ".join([
-        f'Character reference sheet of {c["name"]}.',
+        "Character reference sheet of one person.",
         sentence(c["visual"]),
         "Three full-body views side by side on a plain light-grey studio background: front view, "
         "three-quarter view, side profile; same person, same outfit and hairstyle in every view; "
         "neutral relaxed expression, arms slightly away from the body.",
         "Even soft studio lighting, photorealistic, sharp facial detail, natural skin texture.",
-        "No text, no labels, no logos, no watermark.",
+        "No text, no names, no signatures, no labels, no logos, no watermark.",
     ])
 
 
