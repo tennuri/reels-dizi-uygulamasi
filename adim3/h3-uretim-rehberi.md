@@ -144,7 +144,9 @@ Hepsini [tutarlilik.py](tutarlilik.py) yapar.
 
 ### a) Bir kerelik: iki görsel şablonu
 
-ComfyUI'da **Workflow → Browse Templates** içinden:
+**Kolay yol:** ComfyUI açıkken `python3 qwen_kurulum.py` çalıştır. Modelleri (~45 GB) indirir ve iki şablonu (`workflow_qwen_t2i_api.json`, `workflow_qwen_edit_api.json`) kendisi yazar. Aşağıdaki elle yolu atlayabilirsin.
+
+**Elle yol:** ComfyUI'da **Workflow → Browse Templates** içinden:
 
 - **Qwen-Image** (metinden görsel) şablonunu aç, eksik modelleri şablonun gösterdiği linklerden indir, bir kez Run'a bas. Sonra **Export (API)** ile `workflow_qwen_t2i_api.json` olarak kaydet.
 - **Qwen-Image-Edit 2509** (ya da listede varsa daha yeni sürümü) şablonunu aç. Bu şablonda **3 tane Load Image** olmalı ve üçü de `TextEncodeQwenImageEditPlus` düğümünün `image1`, `image2`, `image3` girişlerine bağlı olmalı. Bağlı değilse (mor/soluk görünüyorsa) bypass'ı kaldırıp bağla. Bir kez Run'a bas, **Export (API)** ile `workflow_qwen_edit_api.json` olarak kaydet.
