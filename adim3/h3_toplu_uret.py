@@ -139,7 +139,10 @@ def find_inputs(wf, names):
 
 def find_duration_inputs(wf):
     """H3 şablonunda süre, saniyeyi kareye çeviren bir ComfyMathExpression'a
-    bağlı PrimitiveFloat'tır (ör. 'round(a * 24)'). Yoksa ada göre ara."""
+    bağlı PrimitiveFloat'tır (ör. 'round(a * 24)'). LTX-2.5 şablonunda ise
+    'Duration' başlıklı bir PrimitiveInt'tir (saniye); kare sayısını şablon
+    'a * b + 1' ile kendisi hesaplar (süre x fps + 1, 24 fps'te hep 8n+1).
+    İkisi de yoksa ada göre ara."""
     hits = []
     for node in wf.values():
         if node.get("class_type") != "ComfyMathExpression":
@@ -149,7 +152,27 @@ def find_duration_inputs(wf):
         for val in node["inputs"].values():
             if isinstance(val, list) and wf.get(val[0], {}).get("class_type") == "PrimitiveFloat":
                 hits.append((val[0], "value"))
+    if not hits:
+        hits = [(node_id, "value") for node_id, node in wf.items()
+                if node.get("class_type") == "PrimitiveInt"
+                and node.get("_meta", {}).get("title", "").strip().lower() in ("duration", "süre")]
     return hits or find_inputs(wf, {"duration", "length_seconds"})
+
+
+def ltx_fps(wf):
+    """LTX şablonundaki 'Frame Rate' değeri (yoksa None); kare sayısını yazdırmak için."""
+    for node in wf.values():
+        if (node.get("class_type") == "PrimitiveInt"
+                and node.get("_meta", {}).get("title", "").strip().lower() == "frame rate"):
+            return node["inputs"].get("value")
+    return None
+
+
+def duration_value(wf, node_id, seconds):
+    """Süre girişine yazılacak değer: H3'te float saniye, LTX'te tam sayı saniye."""
+    if wf[node_id].get("class_type") == "PrimitiveInt":
+        return int(seconds)
+    return float(seconds)
 
 
 def find_prompt_input(wf):
@@ -244,6 +267,9 @@ def main():
         print(f"[{title}]")
         print(f"prompt   -> node {prompt_at[0]} ({wf[prompt_at[0]]['class_type']})")
         print(f"süre     -> {at['duration'] or 'BULUNAMADI (şablondaki süre kullanılır)'}")
+        fps = ltx_fps(wf)
+        if fps:
+            print(f"fps      -> {fps} (LTX: kare sayısı = süre x {fps} + 1)")
         print(f"seed     -> {at['seed'] or 'bulunamadı'}")
         print(f"kayıt    -> {at['prefix'] or 'BULUNAMADI (dosya adları karışabilir)'}")
         return at
@@ -296,7 +322,7 @@ def main():
                     wf[node_id]["inputs"][key] = name
             wf[prompt_at[0]]["inputs"][prompt_at[1]] = text
             for node_id, key in at["duration"]:
-                wf[node_id]["inputs"][key] = float(max(4, min(15, round(dur))))
+                wf[node_id]["inputs"][key] = duration_value(wf, node_id, max(4, min(15, round(dur))))
             for node_id, key in at["seed"]:
                 wf[node_id]["inputs"][key] = args.seed + n
             for node_id, key in at["prefix"]:
