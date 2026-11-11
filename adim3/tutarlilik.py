@@ -182,8 +182,10 @@ def fill(wf_template, at, prompt, seed, prefix, size=None, images=()):
         for nid in at["size"]:
             wf[nid]["inputs"]["width"], wf[nid]["inputs"]["height"] = size
     images = list(images)
-    if images:  # boş kalan Load Image yuvalarına ilk görseli ver, şablon eksik dosyayla hata vermesin
-        images += [images[0]] * (len(at["images"]) - len(images))
+    if images:  # boş kalan Load Image yuvalarını doldur, şablon eksik dosyayla hata vermesin.
+        # Son görseli (karakter kartı) tekrarla: mekan karesi iki yuvada olunca model odanın
+        # geniş planına kilitleniyor, istenen açı ve poz tutmuyor.
+        images += [images[-1]] * (len(at["images"]) - len(images))
     for nid, name in zip(at["images"], images):
         wf[nid]["inputs"]["image"] = name
     return wf
