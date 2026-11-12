@@ -1,5 +1,7 @@
 # Çekim listesinden H3 videosuna
 
+> **11.11.2026'dan beri video modeli LTX-2.5.** Bu rehberdeki bütün adımlar aynen geçerli, sadece şablon olarak `workflow_api.json` / `workflow_ref_api.json` yerine [workflows/workflow_ltx_api.json](workflows/workflow_ltx_api.json) ve [workflows/workflow_ltx_ref_api.json](workflows/workflow_ltx_ref_api.json) ver (`--workflow` ve `--ref-workflow`). Kurulum: [adim1/runpod-ltx-kurulum.md](../adim1/runpod-ltx-kurulum.md). Metinde "H3" geçen yerleri "video modeli" diye oku.
+
 Elinde 4 adımın çıktıları var. Bu rehber onları RunPod'daki ComfyUI'da kliplere çevirip tek bir bölüm videosu yapmayı anlatıyor. İki dosya kullanacağız:
 
 - [h3_toplu_uret.py](h3_toplu_uret.py): Bir bölümün bütün çekimlerini sırayla H3'e gönderir. Adım 4'teki prompt fonksiyonu da içinde.

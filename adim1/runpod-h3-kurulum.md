@@ -1,5 +1,7 @@
 # MiniMax H3'ü RunPod'da çalıştırma rehberi
 
+> **Eski.** 11.11.2026'dan beri video modeli LTX-2.5: [runpod-ltx-kurulum.md](runpod-ltx-kurulum.md). Bu rehber başvuru için duruyor.
+
 Amaç: Bilgisayarındaki ComfyUI şablonunun (`video_minimax_h3_t2v`) aynısını kiralık bir GPU üzerinde çalıştırıp ilk 9:16 sahneyi üretmek.
 
 ## 1. Hangi GPU?
